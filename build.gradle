@@ -1,0 +1,36 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+compileJava.options.encoding = "UTF-8"
+compileTestJava.options.encoding = "UTF-8"
+
+group 'com.didalgo'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+ext {
+    gpt3_java_version = '0.11.1'
+    jackson_version = '2.14.2'
+    jupiter_version = '5.9.2'
+}
+
+dependencies {
+    compileOnly "com.fasterxml.jackson.core:jackson-databind:${jackson_version}"
+    compileOnly "com.theokanning.openai-gpt3-java:api:${gpt3_java_version}"
+    testImplementation 'com.squareup.okhttp3:logging-interceptor:3.14.9'
+    testImplementation "com.fasterxml.jackson.core:jackson-databind:${jackson_version}"
+    testImplementation "com.theokanning.openai-gpt3-java:service:${gpt3_java_version}"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${jupiter_version}"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:${jupiter_version}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${jupiter_version}"
+}
+
+test {
+    useJUnitPlatform()
+}
