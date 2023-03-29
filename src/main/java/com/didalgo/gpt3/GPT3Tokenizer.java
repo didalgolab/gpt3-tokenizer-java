@@ -132,7 +132,7 @@ public class GPT3Tokenizer {
                 String piece = nextSpecial.group();
                 Integer token = specialTokensEncoder.get(piece);
                 ret.add(token);
-                start = start + nextSpecial.end();
+                start += nextSpecial.end();
                 lastPieceTokenLen = 0;
             } else {
                 break;
@@ -168,7 +168,7 @@ public class GPT3Tokenizer {
             parts.add(new IntPair(i, Integer.MAX_VALUE));
         }
 
-        BytePairRankingFunction getRank2 = (partsList, startIdx) -> {
+        BytePairRankingFunction getRank = (partsList, startIdx) -> {
             if ((startIdx + 2) < partsList.size()) {
                 ByteSequence bytes = piece.subSequence(partsList.get(startIdx).start, partsList.get(startIdx + 2).start);
                 Integer rank = ranks.get(bytes);
@@ -179,7 +179,7 @@ public class GPT3Tokenizer {
         };
 
         for (int i = 0; i < parts.size() - 2; i++) {
-            int rank = getRank(piece, ranks, parts, i);
+            int rank = getRank.apply(parts, i);
             if (rank != Integer.MAX_VALUE) {
                 parts.get(i).end = rank;
             }
@@ -197,14 +197,11 @@ public class GPT3Tokenizer {
                 }
             }
             if (minRank != Integer.MAX_VALUE) {
-                //IntPair mergedPair = new IntPair(parts.get(minIndex).start, parts.get(minIndex + 1).start);
-                //parts.set(minIndex, mergedPair);
-                //parts.get(minIndex).end = parts.get(minIndex + 1).start;
                 parts.remove(minIndex + 1);
 
-                parts.get(minIndex).end = getRank(piece, ranks, parts, minIndex);
+                parts.get(minIndex).end = getRank.apply(parts, minIndex);
                 if (minIndex > 0) {
-                    parts.get(minIndex - 1).end = getRank(piece, ranks, parts, minIndex - 1);
+                    parts.get(minIndex - 1).end = getRank.apply(parts, minIndex - 1);
                 }
             } else {
                 break;
@@ -218,17 +215,6 @@ public class GPT3Tokenizer {
 
         return out;
     }
-
-    public static int getRank(ByteSequence piece, Map<ByteSequence, Integer> ranks, List<IntPair> partsList, int startIdx) {
-        if ((startIdx + 2) < partsList.size()) {
-            ByteSequence bytes = piece.subSequence(partsList.get(startIdx).start, partsList.get(startIdx + 2).start);
-            Integer rank = ranks.get(bytes);
-            return rank != null ? rank : Integer.MAX_VALUE;
-        } else {
-            return Integer.MAX_VALUE;
-        }
-    };
-
 
     /** The functional interface for mapping a byte sequence to its rank. */
     @FunctionalInterface

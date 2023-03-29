@@ -144,12 +144,14 @@ public interface Encoding {
         }
 
         public static Map<ByteSequence, Integer> loadTiktokenBase(Path tiktokenFile) throws IOException {
-            return Files.lines(tiktokenFile)
-                    .filter(line -> !line.isEmpty())
-                    .map(line -> line.split(" ", 2))
-                    .collect(Collectors.toMap(
-                            parts -> new ByteSequence(Base64.getDecoder().decode(parts[0])),
-                            parts -> Integer.parseInt(parts[1])));
+            try (var lines = Files.lines(tiktokenFile)) {
+                return lines
+                        .filter(line -> !line.isEmpty())
+                        .map(line -> line.split(" ", 2))
+                        .collect(Collectors.toMap(
+                                parts -> new ByteSequence(Base64.getDecoder().decode(parts[0])),
+                                parts -> Integer.parseInt(parts[1])));
+            }
         }
     }
 }
