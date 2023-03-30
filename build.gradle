@@ -1,13 +1,16 @@
 plugins {
     id 'java'
     id 'application'
+    id 'maven-publish'
+    id 'signing'
 }
 
 compileJava.options.encoding = "UTF-8"
 compileTestJava.options.encoding = "UTF-8"
 
 group 'com.didalgo'
-version '1.0-SNAPSHOT'
+archivesBaseName = 'gpt3-tokenizer'
+version '0.1.0'
 
 repositories {
     mavenLocal()
@@ -33,4 +36,66 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+publishing {
+    publications.create("mavenJava", MavenPublication) {
+        artifactId = 'gpt3-tokenizer'
+        from components.java
+        versionMapping {
+            usage('java-api') {
+                fromResolutionOf('runtimeClasspath')
+            }
+            usage('java-runtime') {
+                fromResolutionResult()
+            }
+        }
+        pom {
+            name = 'Java GPT3/4 Tokenizer'
+            description = 'Java implementation of a GPT3/4 tokenizer'
+            url = 'https://github.com/didalgo2/gpt3-tokenizer-java'
+            licenses {
+                license {
+                    name = 'MIT License'
+                    url = 'https://github.com/didalgo2/gpt3-tokenizer-java/blob/main/LICENSE'
+                }
+            }
+            developers {
+                developer {
+                    id = 'didalgo'
+                    name = 'Mariusz Bernacki'
+                    email = 'didalgo@didalgo.com'
+                }
+            }
+            scm {
+                connection = 'scm:git:git://github.com/didalgo2/gpt3-tokenizer-java.git'
+                developerConnection = 'scm:git:ssh://github.com/didalgo2/gpt3-tokenizer-java.git'
+                url = 'https://github.com/didalgo2/gpt3-tokenizer-java/'
+            }
+        }
+    }
+    repositories {
+        maven {
+            def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            credentials {
+                username = project.properties['ossrhUser'].toString()
+                password = project.properties['ossrhPassword'].toString()
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
+}
+
+javadoc {
+    options.addBooleanOption('html5', true)
 }
