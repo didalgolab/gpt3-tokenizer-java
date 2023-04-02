@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2023 Mariusz Bernacki <info@didalgo.com>
+ * SPDX-License-Identifier: MIT
+ */
 package com.didalgo.gpt3;
 
 import com.theokanning.openai.completion.chat.ChatMessage;
@@ -29,6 +33,9 @@ import java.util.stream.StreamSupport;
  *   the file and can load the specified custom {@code Calculator} implementation, it will use
  *   that implementation instead of the default {@code TokenCount.StandardCalculator}.</li>
  * </ol>
+ *
+ * @author Mariusz Bernacki
+ *
  */
 public class TokenCount {
 

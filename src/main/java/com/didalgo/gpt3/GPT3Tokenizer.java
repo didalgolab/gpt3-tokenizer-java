@@ -1,9 +1,14 @@
+/*
+ * Copyright (c) 2023 OpenAI and Tiktoken's contributors
+ * Copyright (c) 2023 Mariusz Bernacki <info@didalgo.com>
+ * SPDX-License-Identifier: MIT
+ * SPDX-FileComment: This file is a transpiled version of the code from https://github.com/openai/tiktoken
+ */
 package com.didalgo.gpt3;
 
 import java.io.ByteArrayOutputStream;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
@@ -12,6 +17,15 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toMap;
 
+/**
+ * Java implementation of the GPT3/4 tokenizer.
+ * <p>
+ * Modifications:
+ * <ul>
+ *     <li>[MB] 2023-03-25: Repackaged from <a href="https://github.com/openai/tiktoken">Tiktoken</a> for inclusion in gpt3-tokenizer-java.</li>
+ *     <li>[MB] 2023-04-02: Major refactoring for cleaner code and improved performance.</li>
+ * </ul>
+ */
 public class GPT3Tokenizer {
     private final Map<ByteSequence, Integer> encoder;
     private final Map<Integer, ByteSequence> decoder;
@@ -88,7 +102,7 @@ public class GPT3Tokenizer {
     protected List<Integer> encodeImpl(String text, Set<String> allowedSpecial) {
         Pattern specialRegex = getTlSpecialRegex();
         Pattern regex = getTlRegex();
-        List<Integer> ret = new ArrayList<>();
+        List<Integer> ret = new ArrayList<>(text.length() / 4);
 
         int start = 0;
         int lastPieceTokenLen = 0;
@@ -114,16 +128,13 @@ public class GPT3Tokenizer {
             // Tokenize the text using the regular expression
             Matcher matcher = regex.matcher(text.substring(start, end));
             while (matcher.find()) {
-                String piece = matcher.group();
-                ByteSequence bytes = new ByteSequence(piece.getBytes(UTF_8));
-                Integer token = encoder.get(bytes);
+                ByteSequence piece = ByteSequence.from(matcher.group());
+                Integer token = encoder.get(piece);
                 if (token != null) {
                     lastPieceTokenLen = 1;
                     ret.add(token);
                 } else {
-                    List<Integer> tokens = bytePairEncode(bytes, encoder);
-                    lastPieceTokenLen = tokens.size();
-                    ret.addAll(tokens);
+                    lastPieceTokenLen = bytePairMerge(piece, ret);
                 }
             }
 
@@ -144,15 +155,6 @@ public class GPT3Tokenizer {
         return ret;
     }
 
-    public static List<Integer> bytePairEncode(ByteSequence piece, Map<ByteSequence, Integer> ranks) {
-        if (piece.length() == 1) {
-            List<Integer> ret = new ArrayList<>(1);
-            ret.add(ranks.get(piece));
-            return ret;
-        }
-        return bytePairMerge(piece, ranks, p -> ranks.get(piece.subSequence(p.start, p.end)));
-    }
-
     private static class IntPair {
         // Simple data structure for representing a pair of indices into a byte sequence
         int start, end;
@@ -162,30 +164,29 @@ public class GPT3Tokenizer {
         }
     }
 
-    public static List<Integer> bytePairMerge(ByteSequence piece, Map<ByteSequence, Integer> ranks, Function<IntPair, Integer> f) {
+    protected int getRank(ByteSequence piece, List<IntPair> partsList, int startIdx) {
+        if (startIdx + 2 < partsList.size()) {
+            ByteSequence bytes = piece.subSequence(partsList.get(startIdx).start, partsList.get(startIdx + 2).start);
+            Integer rank = encoder.get(bytes);
+            return (rank != null)? rank : Integer.MAX_VALUE;
+        } else {
+            return Integer.MAX_VALUE;
+        }
+    };
+
+    protected int bytePairMerge(ByteSequence piece, Collection<Integer> result) {
         List<IntPair> parts = new ArrayList<>(piece.length() + 1);
         for (int i = 0; i <= piece.length(); i++) {
             parts.add(new IntPair(i, Integer.MAX_VALUE));
         }
 
-        BytePairRankingFunction getRank = (partsList, startIdx) -> {
-            if ((startIdx + 2) < partsList.size()) {
-                ByteSequence bytes = piece.subSequence(partsList.get(startIdx).start, partsList.get(startIdx + 2).start);
-                Integer rank = ranks.get(bytes);
-                return rank != null ? rank : Integer.MAX_VALUE;
-            } else {
-                return Integer.MAX_VALUE;
-            }
-        };
-
         for (int i = 0; i < parts.size() - 2; i++) {
-            int rank = getRank.apply(parts, i);
+            int rank = getRank(piece, parts, i);
             if (rank != Integer.MAX_VALUE) {
                 parts.get(i).end = rank;
             }
         }
 
-        List<Integer> out = new ArrayList<>();
         while (parts.size() > 1) {
             int minRank = Integer.MAX_VALUE;
             int minIndex = -1;
@@ -196,29 +197,23 @@ public class GPT3Tokenizer {
                     minIndex = i;
                 }
             }
-            if (minRank != Integer.MAX_VALUE) {
-                parts.remove(minIndex + 1);
-
-                parts.get(minIndex).end = getRank.apply(parts, minIndex);
-                if (minIndex > 0) {
-                    parts.get(minIndex - 1).end = getRank.apply(parts, minIndex - 1);
-                }
-            } else {
+            if (minRank == Integer.MAX_VALUE) {
                 break;
+            }
+            parts.remove(minIndex + 1);
+            parts.get(minIndex).end = getRank(piece, parts, minIndex);
+            if (minIndex > 0) {
+                parts.get(minIndex - 1).end = getRank(piece, parts, minIndex - 1);
             }
         }
 
+        int resultCount = 0;
         for (int i = 0; i < parts.size() - 1; i++) {
             IntPair range = new IntPair(parts.get(i).start, parts.get(i + 1).start);
-            out.add(f.apply(range));
+            result.add(encoder.get(piece.subSequence(range.start, range.end)));
+            resultCount++;
         }
 
-        return out;
-    }
-
-    /** The functional interface for mapping a byte sequence to its rank. */
-    @FunctionalInterface
-    private interface BytePairRankingFunction {
-        int apply(List<IntPair> partsList, int startIdx);
+        return resultCount;
     }
 }

@@ -1,7 +1,16 @@
+/*
+ * Copyright (c) 2023 Mariusz Bernacki <info@didalgo.com>
+ * SPDX-License-Identifier: MIT
+ */
 package com.didalgo.gpt3;
 
 import java.util.Objects;
 
+/**
+ * Describes the various chat messaging formats for the purpose of counting tokens in chat conversations against different models.
+ *
+ * @author Mariusz Bernacki
+ */
 public interface ChatFormatDescriptor {
 
     Encoding encoding();

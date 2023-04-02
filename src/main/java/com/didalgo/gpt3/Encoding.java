@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2023 OpenAI and Tiktoken's contributors
+ * Copyright (c) 2023 Mariusz Bernacki <info@didalgo.com>
+ * SPDX-License-Identifier: MIT
+ * SPDX-FileComment: This file is a transpiled version of the code from https://github.com/openai/tiktoken
+ */
 package com.didalgo.gpt3;
 
 import java.io.IOException;
@@ -6,13 +12,20 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+
+/**
+ * Represents variants of BPE encoding.
+ * <p>
+ * Modifications:
+ * <ul>
+ *     <li>[MB] 2023-03-25: Repackaged from <a href="https://github.com/openai/tiktoken">Tiktoken</a> for inclusion in gpt3-tokenizer-java.</li>
+ *     <li>[MB] 2023-04-02: Major refactoring for cleaner code and improved performance.</li>
+ * </ul>
+ */
 public interface Encoding {
 
     String ENDOFTEXT = "<|endoftext|>";
@@ -24,7 +37,7 @@ public interface Encoding {
     Encoding CL100K_BASE = new Of(
             Lookup.loadTiktokenBase("cl100k_base.tiktoken"),
             Map.of(ENDOFTEXT, 100257, FIM_PREFIX, 100258, FIM_MIDDLE, 100259, FIM_SUFFIX, 100260, ENDOFPROMPT, 100276),
-            Pattern.compile("(?iu:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+")
+            Pattern.compile("(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+")
     );
 
     Encoding P50K_BASE = new Of(
@@ -34,7 +47,7 @@ public interface Encoding {
     );
 
     Encoding P50K_EDIT = new Of(
-            Lookup.loadTiktokenBase("p50k_base.tiktoken"),
+            P50K_BASE.mergeableRanks(),
             Map.of(ENDOFTEXT, 50256, FIM_PREFIX, 50281, FIM_MIDDLE, 50282, FIM_SUFFIX, 50283),
             Pattern.compile("'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+")
     );
@@ -57,8 +70,13 @@ public interface Encoding {
             Pattern pattern
     ) implements Encoding {
         public Of {
-            mergeableRanks = Collections.unmodifiableMap(new HashMap<>(mergeableRanks)); // only wrapped HashMap is efficient enough; Map.copyOf() has performance issues
-            specialTokens = Collections.unmodifiableMap(new HashMap<>(specialTokens)); // only wrapped HashMap is efficient enough; Map.copyOf() has performance issues
+            mergeableRanks = unmodifiableMap(mergeableRanks); // only wrapped HashMap is efficient enough; Map.copyOf() has performance issues
+            specialTokens = unmodifiableMap(specialTokens); // only wrapped HashMap is efficient enough; Map.copyOf() has performance issues
+        }
+
+        private static final Class<?> unmodifiableMapType = Collections.unmodifiableMap(new TreeMap<>()).getClass();
+        private static <K, V> Map<K, V> unmodifiableMap(Map<K, V> map) {
+            return (map.getClass() == unmodifiableMapType)? map : Collections.unmodifiableMap(new HashMap<>(map));
         }
     }
 
@@ -149,7 +167,7 @@ public interface Encoding {
                         .filter(line -> !line.isEmpty())
                         .map(line -> line.split(" ", 2))
                         .collect(Collectors.toMap(
-                                parts -> new ByteSequence(Base64.getDecoder().decode(parts[0])),
+                                parts -> ByteSequence.of(Base64.getDecoder().decode(parts[0])),
                                 parts -> Integer.parseInt(parts[1])));
             }
         }
