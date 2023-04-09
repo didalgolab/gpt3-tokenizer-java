@@ -6,15 +6,9 @@
  */
 package com.didalgo.gpt3;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.*;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 
 /**
@@ -35,25 +29,25 @@ public interface Encoding {
     String ENDOFPROMPT = "<|endofprompt|>";
 
     Encoding CL100K_BASE = new Of(
-            Lookup.loadTiktokenBase("cl100k_base.tiktoken"),
+            "cl100k_base.tiktoken", new HashMap<>(),
             Map.of(ENDOFTEXT, 100257, FIM_PREFIX, 100258, FIM_MIDDLE, 100259, FIM_SUFFIX, 100260, ENDOFPROMPT, 100276),
             Pattern.compile("(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+")
     );
 
     Encoding P50K_BASE = new Of(
-            Lookup.loadTiktokenBase("p50k_base.tiktoken"),
+            "p50k_base.tiktoken", new HashMap<>(),
             Map.of(ENDOFTEXT, 50256),
             Pattern.compile("'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+")
     );
 
     Encoding P50K_EDIT = new Of(
-            P50K_BASE.mergeableRanks(),
+            "p50k_base.tiktoken", new HashMap<>(),
             Map.of(ENDOFTEXT, 50256, FIM_PREFIX, 50281, FIM_MIDDLE, 50282, FIM_SUFFIX, 50283),
             Pattern.compile("'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+")
     );
 
     Encoding R50K_BASE = new Of(
-            Lookup.loadTiktokenBase("r50k_base.tiktoken"),
+            "r50k_base.tiktoken", new HashMap<>(),
             Map.of(ENDOFTEXT, 50256),
             Pattern.compile("'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+")
     );
@@ -65,18 +59,24 @@ public interface Encoding {
     Pattern pattern();
 
     record Of(
+            String tiktokenFilename,
             Map<ByteSequence, Integer> mergeableRanks,
             Map<String, Integer> specialTokens,
             Pattern pattern
     ) implements Encoding {
         public Of {
-            mergeableRanks = unmodifiableMap(mergeableRanks); // only wrapped HashMap is efficient enough; Map.copyOf() has performance issues
-            specialTokens = unmodifiableMap(specialTokens); // only wrapped HashMap is efficient enough; Map.copyOf() has performance issues
+            specialTokens = Collections.unmodifiableMap(new HashMap<>(specialTokens)); // only wrapped HashMap is efficient enough; Map.copyOf() has performance issues
         }
 
-        private static final Class<?> unmodifiableMapType = Collections.unmodifiableMap(new TreeMap<>()).getClass();
-        private static <K, V> Map<K, V> unmodifiableMap(Map<K, V> map) {
-            return (map.getClass() == unmodifiableMapType)? map : Collections.unmodifiableMap(new HashMap<>(map));
+        @Override
+        public Map<ByteSequence, Integer> mergeableRanks() {
+            if (mergeableRanks.isEmpty()) {
+                synchronized (mergeableRanks) {
+                    if (mergeableRanks.isEmpty())
+                        Lookup.loadTiktokenBase(tiktokenFilename, mergeableRanks);
+                }
+            }
+            return Collections.unmodifiableMap(this.mergeableRanks);
         }
     }
 
@@ -146,29 +146,20 @@ public interface Encoding {
             modelToEncoding = m2e;
         }
 
-        public static Map<ByteSequence, Integer> loadTiktokenBase(String filename) {
-            URL tiktokenUrl = Lookup.class.getResource(filename);
-            if (tiktokenUrl == null) {
-                throw new AssertionError("Tiktoken file `" + filename + "` not found");
-            }
-
-            try {
-                return loadTiktokenBase(Path.of(tiktokenUrl.toURI()));
-            } catch (URISyntaxException e) {
-                throw new IllegalArgumentException(e.getMessage(), e);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
-
-        public static Map<ByteSequence, Integer> loadTiktokenBase(Path tiktokenFile) throws IOException {
-            try (var lines = Files.lines(tiktokenFile)) {
-                return lines
+        public static Map<ByteSequence, Integer> loadTiktokenBase(String filename, Map<ByteSequence, Integer> resultMap) {
+            try (InputStream in = Lookup.class.getResourceAsStream(filename)) {
+                var result = (resultMap == null)? new HashMap<ByteSequence, Integer>() : resultMap;
+                new BufferedReader(new InputStreamReader(in)).lines()
                         .filter(line -> !line.isEmpty())
                         .map(line -> line.split(" ", 2))
-                        .collect(Collectors.toMap(
-                                parts -> ByteSequence.of(Base64.getDecoder().decode(parts[0])),
-                                parts -> Integer.parseInt(parts[1])));
+                        .forEach(parts -> result.put(
+                                ByteSequence.of(Base64.getDecoder().decode(parts[0])),
+                                Integer.parseInt(parts[1]))
+                        );
+                return result;
+
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
             }
         }
     }
