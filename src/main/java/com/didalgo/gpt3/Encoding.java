@@ -7,6 +7,7 @@
 package com.didalgo.gpt3;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -149,13 +150,16 @@ public interface Encoding {
         public static Map<ByteSequence, Integer> loadTiktokenBase(String filename, Map<ByteSequence, Integer> resultMap) {
             try (InputStream in = Lookup.class.getResourceAsStream(filename)) {
                 var result = (resultMap == null)? new HashMap<ByteSequence, Integer>() : resultMap;
-                new BufferedReader(new InputStreamReader(in)).lines()
+                new BufferedReader(new InputStreamReader(in, StandardCharsets.US_ASCII)).lines()
                         .filter(line -> !line.isEmpty())
-                        .map(line -> line.split(" ", 2))
-                        .forEach(parts -> result.put(
-                                ByteSequence.of(Base64.getDecoder().decode(parts[0])),
-                                Integer.parseInt(parts[1]))
-                        );
+                        .forEach(line -> {
+                            int spaceIdx = line.indexOf(' ');
+                            if (spaceIdx > 0) {
+                                ByteSequence key = ByteSequence.of(Base64.getDecoder().decode(line.substring(0, spaceIdx)));
+                                int value = Integer.parseInt(line.substring(spaceIdx + 1));
+                                result.put(key, value);
+                            }
+                        });
                 return result;
 
             } catch (IOException e) {
