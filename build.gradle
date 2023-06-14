@@ -10,7 +10,7 @@ compileTestJava.options.encoding = "UTF-8"
 
 group 'com.didalgo'
 archivesBaseName = 'gpt3-tokenizer'
-version '0.1.2'
+version '0.1.4'
 
 repositories {
     mavenLocal()
