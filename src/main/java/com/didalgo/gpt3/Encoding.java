@@ -32,25 +32,25 @@ public interface Encoding {
     Encoding CL100K_BASE = new Of(
             "cl100k_base.tiktoken", new HashMap<>(),
             Map.of(ENDOFTEXT, 100257, FIM_PREFIX, 100258, FIM_MIDDLE, 100259, FIM_SUFFIX, 100260, ENDOFPROMPT, 100276),
-            Pattern.compile("(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+")
+            Pattern.compile("(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+", Pattern.UNICODE_CHARACTER_CLASS)
     );
 
     Encoding P50K_BASE = new Of(
             "p50k_base.tiktoken", new HashMap<>(),
             Map.of(ENDOFTEXT, 50256),
-            Pattern.compile("'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+")
+            Pattern.compile("'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+", Pattern.UNICODE_CHARACTER_CLASS)
     );
 
     Encoding P50K_EDIT = new Of(
             "p50k_base.tiktoken", new HashMap<>(),
             Map.of(ENDOFTEXT, 50256, FIM_PREFIX, 50281, FIM_MIDDLE, 50282, FIM_SUFFIX, 50283),
-            Pattern.compile("'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+")
+            Pattern.compile("'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+", Pattern.UNICODE_CHARACTER_CLASS)
     );
 
     Encoding R50K_BASE = new Of(
             "r50k_base.tiktoken", new HashMap<>(),
             Map.of(ENDOFTEXT, 50256),
-            Pattern.compile("'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+")
+            Pattern.compile("'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+", Pattern.UNICODE_CHARACTER_CLASS)
     );
 
     Map<ByteSequence, Integer> mergeableRanks();
