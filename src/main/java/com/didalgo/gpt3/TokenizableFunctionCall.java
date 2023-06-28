@@ -8,7 +8,7 @@ package com.didalgo.gpt3;
  * Represents a message from the "assistant" with the function call intent, instead
  * of the usual content.
  *
- * @author Mariusz Bernacki <consulting@didalgo.com>
+ * @author Mariusz Bernacki
  */
 public interface TokenizableFunctionCall {
 
@@ -32,12 +32,10 @@ public interface TokenizableFunctionCall {
 
     /**
      * Returns {@code true} if this object is a non-empty function call.
-     *
-     * @implSpec
+     * <p>
      * The default implementation returns the result of calling {@code !name().isEmpty()}.
      *
-     * @return {@code true} if function call is present, otherwise
-     * {@code false}
+     * @return {@code true} if function call is provided, otherwise {@code false}
      */
     default boolean isPresent() {
         return !name().isEmpty();
