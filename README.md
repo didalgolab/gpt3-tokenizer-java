@@ -26,8 +26,37 @@ String text = tokenizer.decode(tokens);
 ### Counting Number of Tokens in Chat Messages
 
 ```java
-GPT3Tokenizer tokenizer = new GPT3Tokenizer(Encoding.CL100K_BASE);
-int tokens = TokenCount.fromMessages(messages, tokenizer, ChatFormatDescriptor.forModel("gpt-3.5-turbo"));
+var messages = List.of(
+        new ChatMessage(ChatMessageRole.SYSTEM.value(), "You are a helpful assistant."),
+        new ChatMessage(ChatMessageRole.USER.value(), "Hello there!")
+);
+var model = ModelType.GPT_3_5_TURBO;
+var count = TokenCount.fromMessages(messages, model);
+System.out.println("Prompt tokens: " + count);
+```
+
+### Did you know...
+
+1. ...that all _3.5-turbo_ models released after _0613_ now have tokenization counts for messages consistent with gpt-4 models?
+
+1. ...that OpenAI Tokenizer available at https://platform.openai.com/tokenizer uses p50k encoding, thus it doesn't count correctly tokens for gpt-3.5 and gpt-4 models? If you look for decent alternative, you may like: https://tiktokenizer.vercel.app/, but keep in mind that tokenization for messages of gpt-3.5 models released after 0613 was changed (see point above).
+
+1. ...that in cl100k encoding every sequence of up to 81 spaces is just a single token? So next time when someone tells you that passing YAML to ChatGPT is not efficient, you can argue that...
+```java
+var tokenizer = ModelType.GPT_3_5_TURBO.getTokenizer();
+var tokens = (List<Integer>) null;
+for (var sb = new StringBuilder(" "); (tokens = tokenizer.encode(sb)).size() == 1; sb.append(' '))
+    System.out.printf("`%s`'s token is %s, and that's %d space(s)!\n".replace("(s)", sb.length()==1?"":"s"), sb, tokens, sb.length());
+
+```
+```
+`                                                                           `'s token is [14984], and that's 75 spaces!
+`                                                                            `'s token is [56899], and that's 76 spaces!
+`                                                                             `'s token is [59691], and that's 77 spaces!
+`                                                                              `'s token is [82321], and that's 78 spaces!
+`                                                                               `'s token is [40584], and that's 79 spaces!
+`                                                                                `'s token is [98517], and that's 80 spaces!
+`                                                                                 `'s token is [96529], and that's 81 spaces!
 ```
 
 ## License

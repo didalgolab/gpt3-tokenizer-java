@@ -4,10 +4,13 @@
  */
 package com.didalgo.gpt3;
 
+import com.didalgo.gpt3.functions.OpenAITool;
+import com.didalgo.gpt3.functions.OpenAIToolSupport;
 import com.theokanning.openai.completion.chat.ChatMessage;
 
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.function.Function;
 import java.util.stream.StreamSupport;
 
 /**
@@ -70,12 +73,42 @@ public class TokenCount {
      * and chat format descriptor.
      *
      * @param messages     a list of chat messages (probably gossip)
+     * @param model        the model
+     * @return the token count for the input chat messages
+     */
+    public static int fromMessages(List<ChatMessage> messages, ModelType model) {
+        return fromMessages(messages, model.getTokenizer(), model.getChatFormatDescriptor());
+    }
+
+    /**
+     * Calculates the token count for a list of chat messages using the provided tokenizer
+     * and chat format descriptor.
+     *
+     * @param messages     a list of chat messages (probably gossip)
      * @param tokenizer    the tokenizer to use for token counting
      * @param chatFormat   the descriptor defining the chat format
      * @return the token count for the input chat messages
      */
     public static int fromMessages(List<ChatMessage> messages, GPT3Tokenizer tokenizer, ChatFormatDescriptor chatFormat) {
-        return getCalculator().countTokensFromMessages(messages, tokenizer, chatFormat);
+        return fromMessages(messages, List.of(), tokenizer, chatFormat, TokenizableMessage.from(
+                ChatMessage::getRole,
+                ChatMessage::getName,
+                ChatMessage::getContent,
+                __ -> TokenizableFunctionCall.NONE
+        ));
+    }
+
+    /**
+     * Counts number of prompt tokens in messages.
+     */
+    public static <T_MSG> int fromMessages(
+            List<T_MSG> messages,
+            List<OpenAITool> functions,
+            GPT3Tokenizer tokenizer,
+            ChatFormatDescriptor chatFormat,
+            Function<T_MSG, TokenizableMessage> messageCoercer) {
+
+        return getCalculator().countTokensFromMessages(messages, functions, tokenizer, chatFormat, messageCoercer);
     }
 
     /**
@@ -92,7 +125,13 @@ public class TokenCount {
      */
     public interface Calculator {
         int countTokensFromString(String text, GPT3Tokenizer tokenizer);
-        int countTokensFromMessages(List<ChatMessage> messages, GPT3Tokenizer tokenizer, ChatFormatDescriptor chatFormat);
+
+        <T_MSG> int countTokensFromMessages(
+                List<T_MSG> messages,
+                List<OpenAITool> functions,
+                GPT3Tokenizer tokenizer,
+                ChatFormatDescriptor chatFormat,
+                Function<T_MSG, TokenizableMessage> messageCoercer);
     }
 
     /**
@@ -106,16 +145,39 @@ public class TokenCount {
         }
 
         @Override
-        public int countTokensFromMessages(List<ChatMessage> messages, GPT3Tokenizer tokenizer, ChatFormatDescriptor chatFormat) {
+        public <T_MSG> int countTokensFromMessages(
+                List<T_MSG> messages,
+                List<OpenAITool> functions,
+                GPT3Tokenizer tokenizer,
+                ChatFormatDescriptor chatFormat,
+                Function<T_MSG, TokenizableMessage> messageCoercer)
+        {
             int tokenCount = 0;
-            for (ChatMessage message : messages) {
+            for (T_MSG message : messages) {
+                var tokenizable = messageCoercer.apply(message);
                 tokenCount += chatFormat.extraTokenCountPerMessage();
-                if (message.getRole() != null)
-                    tokenCount += tokenizer.encode(message.getRole()).size();
-                if (message.getContent() != null)
-                    tokenCount += tokenizer.encode(message.getContent()).size();
+
+                var role = tokenizable.role();
+                if (role != null && !role.isEmpty())
+                    tokenCount += tokenizer.encode(role).size();
+
+                var content = tokenizable.content();
+                if (content != null)
+                    tokenCount += tokenizer.encode(content).size();
+
+                var functionCall = tokenizable.functionCall();
+                if (functionCall.isPresent()) {
+                    tokenCount += tokenizer.encode(functionCall.name()).size();
+                    tokenCount += tokenizer.encode(functionCall.arguments()).size();
+                }
             }
             tokenCount += chatFormat.extraTokenCountPerRequest(); // Every reply is primed with <im_start>assistant\n
+
+            if (!functions.isEmpty()) {
+                tokenCount += chatFormat.extraTokenCountForFunctions();
+                tokenCount += tokenizer.encode(OpenAIToolSupport.getDefault().generateDocumentation(functions)).size();
+            }
+
             return tokenCount;
         }
     }

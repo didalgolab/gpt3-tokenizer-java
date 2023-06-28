@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "source_code": {
+      "type": "string",
+      "description": "the code to evaluate"
+    },
+    "version": {
+      "type": "integer",
+      "description": "the Java version number, i.e. 17"
+    }
+  },
+  "required": [
+    "code"
+  ]
+}

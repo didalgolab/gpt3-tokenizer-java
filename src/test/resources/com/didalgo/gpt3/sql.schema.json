@@ -1,0 +1,46 @@
+{
+  "type": "object",
+  "properties": {
+    "TYPE": {
+      "type": "string",
+      "enum": ["SELECT","UPDATE","DELETE","ALTER"],
+      "description": "the type of SQL query"
+    },
+    "SQL": {
+      "type": "object",
+      "description": "the SQL object",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "condition": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "limit": {
+          "type": "number"
+        },
+        "ORDER BY": {
+          "type": "object",
+          "description": "the result ordering",
+          "properties": {
+            "column": {
+              "type": "string"
+            },
+            "order": {
+              "type": "string",
+              "enum": ["ASC", "DESC"]
+            }
+          },
+          "required": ["column"]
+        }
+      }
+    }
+  },
+  "required": [
+    "TYPE", "SQL"
+  ]
+}

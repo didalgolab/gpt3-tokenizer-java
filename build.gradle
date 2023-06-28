@@ -10,7 +10,7 @@ compileTestJava.options.encoding = "UTF-8"
 
 group 'com.didalgo'
 archivesBaseName = 'gpt3-tokenizer'
-version '0.1.4'
+version '0.1.5-SNAPSHOT'
 
 repositories {
     mavenLocal()
@@ -18,12 +18,14 @@ repositories {
 }
 
 ext {
-    gpt3_java_version = '0.11.1'
+    gpt3_java_version = '0.14.0'
     jackson_version = '2.14.2'
     jupiter_version = '5.9.2'
 }
 
 dependencies {
+    implementation "javax.json:javax.json-api:1.1.4"
+    implementation "org.glassfish:javax.json:1.1.4"
     compileOnly "com.fasterxml.jackson.core:jackson-databind:${jackson_version}"
     compileOnly "com.theokanning.openai-gpt3-java:api:${gpt3_java_version}"
     testImplementation 'com.squareup.okhttp3:logging-interceptor:3.14.9'

@@ -1,10 +1,19 @@
+/*
+ * Copyright (c) 2023 Mariusz Bernacki <consulting@didalgo.com>
+ * SPDX-License-Identifier: MIT
+ */
 package com.didalgo.gpt3;
 
+import com.didalgo.gpt3.functions.OpenAIFunction;
+import com.didalgo.gpt3.functions.OpenAIToolSupport;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,5 +48,21 @@ public class TokenCountTest {
                 new ChatMessage("user", "This late pivot means we don't have time to boil the ocean for the client deliverable.")
         );
         assertEquals(expectedTokenCount, TokenCount.fromMessages(messages, tokenizer, ChatFormatDescriptor.forModel(modelName)));
+    }
+
+    @Test
+    void under_construction() {
+        var doc = OpenAIToolSupport.getDefault().generateDocumentation(List.of(
+                new OpenAIFunction("java", "Evaluate Java code.", toJsonObject("java.schema.json")),
+                new OpenAIFunction("sql", "Evaluate SQL code.", toJsonObject("sql.schema.json"))
+        ));
+
+        System.out.println(doc);
+    }
+
+    private static JsonObject toJsonObject(String name) {
+        try (JsonReader reader = Json.createReader(TokenCountTest.class.getResourceAsStream(name))) {
+            return reader.readObject();
+        }
     }
 }

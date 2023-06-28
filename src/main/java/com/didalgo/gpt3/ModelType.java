@@ -121,4 +121,18 @@ public enum ModelType {
 		return Cache.getTokenizer(this);
 	}
 
+	/**
+	 * Returns the {@code ChatFormatDescriptor} for this model, which can be used together with
+	 * {@link TokenCount} to count prompt tokens in conversation messages.
+	 * <p>
+	 * <b>Please NOTE</b> that this <i>model bag</i> doesn't distinguish between model variants
+	 * (e.g. -0314, -0613, etc.), thus for models gpt-3.5-*-0301 or older the returned descriptor
+	 * may be imprecise. If you need precise descriptor for old gpt-3.5-turbo model please use
+	 * {@link ChatFormatDescriptor#forModel(String)} method instead.
+	 *
+	 * @return the {@code ChatFormatDescriptor}
+	 */
+	public ChatFormatDescriptor getChatFormatDescriptor() {
+		return ChatFormatDescriptor.forModel(modelName());
+	}
 }

@@ -87,19 +87,19 @@ public class GPT3Tokenizer {
         return pattern;
     }
 
-    public List<Integer> encode(String text) {
+    public List<Integer> encode(CharSequence text) {
         return encode(text, false);
     }
 
-    public List<Integer> encode(String text, boolean allowedSpecial) {
+    public List<Integer> encode(CharSequence text, boolean allowedSpecial) {
         return encode(text, allowedSpecial? specialTokensEncoder.keySet() : Set.of());
     }
 
-    public List<Integer> encode(String text, Set<String> allowedSpecial) {
+    public List<Integer> encode(CharSequence text, Set<String> allowedSpecial) {
         return encodeImpl(text, allowedSpecial);
     }
 
-    protected List<Integer> encodeImpl(String text, Set<String> allowedSpecial) {
+    protected List<Integer> encodeImpl(CharSequence text, Set<String> allowedSpecial) {
         Pattern specialRegex = getTlSpecialRegex();
         Pattern regex = getTlRegex();
         List<Integer> ret = new ArrayList<>(text.length() / 4);
@@ -111,10 +111,10 @@ public class GPT3Tokenizer {
             int startFind = start;
             while (true) {
                 // Find the next allowed special token, if any
-                nextSpecial = specialRegex.matcher(text.substring(startFind));
+                nextSpecial = specialRegex.matcher(text.subSequence(startFind, text.length()));
                 if (nextSpecial.find()) {
                     int startMatch = start + nextSpecial.start();
-                    if (allowedSpecial.contains(text.substring(startMatch, startMatch + nextSpecial.group().length()))) {
+                    if (allowedSpecial.contains(text.subSequence(startMatch, startMatch + nextSpecial.group().length()).toString())) {
                         break;
                     }
                     startFind = startMatch + 1;
@@ -126,7 +126,7 @@ public class GPT3Tokenizer {
             int end = (nextSpecial != null)? (start + nextSpecial.start()) : text.length();
 
             // Tokenize the text using the regular expression
-            Matcher matcher = regex.matcher(text.substring(start, end));
+            Matcher matcher = regex.matcher(text.subSequence(start, end));
             while (matcher.find()) {
                 ByteSequence piece = ByteSequence.from(matcher.group());
                 Integer token = encoder.get(piece);
