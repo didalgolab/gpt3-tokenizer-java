@@ -28,7 +28,6 @@ import java.util.function.Function;
  * ).apply(myObj);
  * }
  * </pre>
- * </p>
  *
  * @author Mariusz Bernacki
  */
