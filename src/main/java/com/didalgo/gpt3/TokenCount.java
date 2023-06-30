@@ -1,15 +1,13 @@
 /*
- * Copyright (c) 2023 Mariusz Bernacki <info@didalgo.com>
+ * Copyright (c) 2023 Mariusz Bernacki <consulting@didalgo.com>
  * SPDX-License-Identifier: MIT
  */
 package com.didalgo.gpt3;
 
-import com.didalgo.gpt3.functions.OpenAITool;
-import com.didalgo.gpt3.functions.OpenAIToolSupport;
+import com.theokanning.openai.completion.chat.ChatFunction;
 import com.theokanning.openai.completion.chat.ChatMessage;
 
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.function.Function;
 import java.util.stream.StreamSupport;
 
@@ -18,24 +16,7 @@ import java.util.stream.StreamSupport;
  * <p>
  * This class provides methods for counting tokens in text strings and lists of
  * {@link ChatMessage} objects using a {@link GPT3Tokenizer}. It also supports pluggable
- * {@link Calculator} implementations, allowing customization of token counting logic.</p>
- * <p>
- * To plug in a custom {@code Calculator} implementation, follow these steps:
- * <ol>
- *   <li>Create a new class that implements the {@code TokenCount.Calculator} interface.</li>
- *   <li>In your custom {@code Calculator} implementation, provide the logic for the
- *   {@code countTokensFromString} and {@code countTokensFromMessages} methods, which
- *   handle token counting for text strings and chat messages, respectively.</li>
- *   <li>Create a file named {@code com.didalgo.gpt3.TokenCount$Calculator} in the {@code META-INF/services}
- *   directory of your project. This file is used by the {@code ServiceLoader} mechanism to
- *   discover and load your custom {@code Calculator} implementation.</li>
- *   <li>In the {@code TokenCount$Calculator} file, specify the fully qualified name of your
- *   custom {@code Calculator} implementation. For example: {@code com.example.CustomCalculator}</li>
- *   <li>When your application starts, the {@code ServiceLoader} mechanism will look for the
- *   {@code TokenCount$Calculator} file in the {@code META-INF/services} directory. If it finds
- *   the file and can load the specified custom {@code Calculator} implementation, it will use
- *   that implementation instead of the default {@code TokenCount.StandardCalculator}.</li>
- * </ol>
+ * {@link TokenCountSupport} implementations, allowing customization of token counting logic.</p>
  *
  * @author Mariusz Bernacki
  *
@@ -65,7 +46,7 @@ public class TokenCount {
      * @return the token count for the input text
      */
     public static int fromString(String text, GPT3Tokenizer tokenizer) {
-        return getCalculator().countTokensFromString(text, tokenizer);
+        return getSupport().countTokensFromString(text, tokenizer);
     }
 
     /**
@@ -77,116 +58,85 @@ public class TokenCount {
      * @return the token count for the input chat messages
      */
     public static int fromMessages(List<ChatMessage> messages, ModelType model) {
-        return fromMessages(messages, model.getTokenizer(), model.getChatFormatDescriptor());
+        return fromMessages(messages, List.of(), model);
     }
 
     /**
      * Calculates the token count for a list of chat messages using the provided tokenizer
      * and chat format descriptor.
      *
-     * @param messages     a list of chat messages (probably gossip)
-     * @param tokenizer    the tokenizer to use for token counting
-     * @param chatFormat   the descriptor defining the chat format
+     * @param messages     a list of chat messages
+     * @param functions    a list of chat functions
+     * @param model        the model
      * @return the token count for the input chat messages
      */
-    public static int fromMessages(List<ChatMessage> messages, GPT3Tokenizer tokenizer, ChatFormatDescriptor chatFormat) {
-        return fromMessages(messages, List.of(), tokenizer, chatFormat, TokenizableMessage.from(
-                ChatMessage::getRole,
-                ChatMessage::getName,
-                ChatMessage::getContent,
-                __ -> TokenizableFunctionCall.NONE
-        ));
+    public static int fromMessages(List<ChatMessage> messages, List<ChatFunction> functions, ModelType model) {
+        return fromMessages(messages, functions, model.getTokenizer(), model.getChatFormatDescriptor());
     }
 
     /**
      * Counts number of prompt tokens in messages.
      */
-    public static <T_MSG> int fromMessages(
-            List<T_MSG> messages,
-            List<OpenAITool> functions,
-            GPT3Tokenizer tokenizer,
-            ChatFormatDescriptor chatFormat,
-            Function<T_MSG, TokenizableMessage> messageCoercer) {
-
-        return getCalculator().countTokensFromMessages(messages, functions, tokenizer, chatFormat, messageCoercer);
+    public static int fromMessages(List<ChatMessage> messages, GPT3Tokenizer tokenizer, ChatFormatDescriptor chatFormat) {
+        return fromMessages(messages, List.of(), tokenizer, chatFormat);
     }
 
     /**
-     * Returns the current {@link Calculator} instance.
+     * Calculates the token count for a list of chat messages using the provided tokenizer
+     * and chat format descriptor.
      *
-     * @return the calculator instance
+     * @param messages     a list of chat messages
+     * @param functions    a list of chat functions
+     * @param tokenizer    the tokenizer to use for token counting
+     * @param chatFormat   the descriptor defining the chat format
+     * @return the token count for the input chat messages
      */
-    public static Calculator getCalculator() {
-        return CalculatorHolder.instance;
+    public static int fromMessages(List<ChatMessage> messages, List<ChatFunction> functions, GPT3Tokenizer tokenizer, ChatFormatDescriptor chatFormat) {
+        return fromMessages(messages, TokenizableMessage.from(
+                ChatMessage::getRole,
+                ChatMessage::getContent,
+                ChatMessage::getName,
+                chatMessage -> (chatMessage.getFunctionCall() == null)? TokenizableFunctionCall.NONE
+                        : TokenizableFunctionCall.of(chatMessage.getFunctionCall().getName(), chatMessage.getFunctionCall().getArguments().toString())
+        ), functions, TokenizableFunction.from(
+                ChatFunction::getName,
+                ChatFunction::getDescription,
+                chatFunction -> getSupport().generateJsonSchema(chatFunction.getParametersClass())
+        ), chatFormat, tokenizer);
     }
 
     /**
-     * Interface for pluggable token counting logic.
+     * Counts number of prompt tokens in messages.
      */
-    public interface Calculator {
-        int countTokensFromString(String text, GPT3Tokenizer tokenizer);
+    public static int fromMessages(
+            List<? extends TokenizableMessage> messages,
+            List<? extends TokenizableTool> tools,
+            ChatFormatDescriptor chatFormat,
+            GPT3Tokenizer tokenizer) {
 
-        <T_MSG> int countTokensFromMessages(
-                List<T_MSG> messages,
-                List<OpenAITool> functions,
-                GPT3Tokenizer tokenizer,
-                ChatFormatDescriptor chatFormat,
-                Function<T_MSG, TokenizableMessage> messageCoercer);
+        return fromMessages(messages, Function.identity(), tools, Function.identity(), chatFormat, tokenizer);
     }
 
     /**
-     * Default implementation of the {@link Calculator} interface.
+     * Counts number of prompt tokens in messages.
      */
-    public static class StandardCalculator implements Calculator {
+    public static <T_MSG, T_TOOL> int fromMessages(
+            List<T_MSG> messages,
+            Function<T_MSG, ? extends TokenizableMessage> messageCoercer,
+            List<T_TOOL> tools,
+            Function<T_TOOL, ? extends TokenizableTool> toolCoercer,
+            ChatFormatDescriptor chatFormat,
+            GPT3Tokenizer tokenizer) {
 
-        @Override
-        public int countTokensFromString(String text, GPT3Tokenizer tokenizer) {
-            return tokenizer.encode(text).size();
-        }
-
-        @Override
-        public <T_MSG> int countTokensFromMessages(
-                List<T_MSG> messages,
-                List<OpenAITool> functions,
-                GPT3Tokenizer tokenizer,
-                ChatFormatDescriptor chatFormat,
-                Function<T_MSG, TokenizableMessage> messageCoercer)
-        {
-            int tokenCount = 0;
-            for (T_MSG message : messages) {
-                var tokenizable = messageCoercer.apply(message);
-                tokenCount += chatFormat.extraTokenCountPerMessage();
-
-                var role = tokenizable.role();
-                if (role != null && !role.isEmpty())
-                    tokenCount += tokenizer.encode(role).size();
-
-                var content = tokenizable.content();
-                if (content != null)
-                    tokenCount += tokenizer.encode(content).size();
-
-                var functionCall = tokenizable.functionCall();
-                if (functionCall.isPresent()) {
-                    tokenCount += tokenizer.encode(functionCall.name()).size();
-                    tokenCount += tokenizer.encode(functionCall.arguments()).size();
-                }
-            }
-            tokenCount += chatFormat.extraTokenCountPerRequest(); // Every reply is primed with <im_start>assistant\n
-
-            if (!functions.isEmpty()) {
-                tokenCount += chatFormat.extraTokenCountForFunctions();
-                tokenCount += tokenizer.encode(OpenAIToolSupport.getDefault().generateDocumentation(functions)).size();
-            }
-
-            return tokenCount;
-        }
+        return getSupport().countTokensFromMessages(messages, messageCoercer, tools, toolCoercer, tokenizer, chatFormat);
     }
 
-    private static final class CalculatorHolder {
-        private static final Calculator instance = loadCalculator();
-
-        private static Calculator loadCalculator() {
-            return ServiceLoader.load(Calculator.class).findFirst().orElseGet(StandardCalculator::new);
-        }
+    /**
+     * Returns the tokenization support object.
+     *
+     * @return the instance of {@link TokenCountSupport}
+     */
+    private static TokenCountSupport getSupport() {
+        return TokenCountSupport.getSupport();
     }
 }

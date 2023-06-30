@@ -2,7 +2,7 @@
  * Copyright (c) 2023 Mariusz Bernacki <consulting@didalgo.com>
  * SPDX-License-Identifier: MIT
  */
-package com.didalgo.gpt3.functions;
+package com.didalgo.gpt3;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -13,21 +13,17 @@ import javax.json.JsonObject;
 import javax.json.JsonReader;
 
 import java.io.StringReader;
-import java.util.List;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class OpenAIFunctionTest {
+class TokenizableFunctionTest {
 
     @ParameterizedTest
     @MethodSource("provideTestData")
     void toString_converts_function_schema_to_internal_representation_the_model_was_trained_on(String name, String description, String jsonSchema, String representation) {
-        var function = new OpenAIFunction(name, description, toJsonObject(jsonSchema));
-        System.out.println(function.toString());
-        assertEquals(representation, function.toString());
-
-        System.out.println(OpenAIToolSupport.getDefault().generateDocumentation(List.of(function)));
+        var function = TokenizableFunction.of(name, description, toJsonObject(jsonSchema));
+        assertEquals(representation, function.generateDocumentation());
     }
 
     private static JsonObject toJsonObject(String json) {

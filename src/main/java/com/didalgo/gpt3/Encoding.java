@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2023 OpenAI and Tiktoken's contributors
- * Copyright (c) 2023 Mariusz Bernacki <info@didalgo.com>
+ * Copyright (c) 2023 Mariusz Bernacki <consulting@didalgo.com>
  * SPDX-License-Identifier: MIT
  * SPDX-FileComment: This file is a transpiled version of the code from https://github.com/openai/tiktoken
  */
