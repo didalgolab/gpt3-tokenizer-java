@@ -2,16 +2,16 @@
  * Copyright (c) 2023 Mariusz Bernacki <consulting@didalgo.com>
  * SPDX-License-Identifier: MIT
  */
-package com.didalgo.gpt3;
+package com.didalgo.llm.openai.tokenizer;
 
+import com.didalgo.llm.FunctionTool;
+import com.didalgo.llm.Tokenizer;
+import com.didalgo.llm.chat.FunctionCall;
+import com.didalgo.llm.chat.Message;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.theokanning.openai.completion.chat.ChatFunction;
-import com.theokanning.openai.completion.chat.ChatFunctionCall;
-import com.theokanning.openai.completion.chat.ChatMessage;
-import com.theokanning.openai.completion.chat.ChatMessageRole;
 import lombok.Getter;
 import lombok.Setter;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TokenCountTest {
 
-    GPT3Tokenizer tokenizer = new GPT3Tokenizer(Encoding.CL100K_BASE);
+    Tokenizer tokenizer = new OpenAITokenizer(Encoding.CL100K_BASE);
 
     @Test
     void fromLinesJoined_gives_total_token_count_including_newlines() {
@@ -43,13 +43,13 @@ public class TokenCountTest {
             "115, gpt-4-0613"
     })
     void fromMessages_gives_correct_token_count(int expectedTokenCount, String modelName) {
-        List<ChatMessage> messages = List.of(
-                new ChatMessage("system", "You are a helpful, pattern-following assistant that translates corporate jargon into plain English."),
-                new ChatMessage("user", "New synergies will help drive top-line growth."),
-                new ChatMessage("assistant", "Things working well together will increase revenue."),
-                new ChatMessage("user", "Let's circle back when we have more bandwidth to touch base on opportunities for increased leverage."),
-                new ChatMessage("assistant", "Let's talk later when we're less busy about how to do better."),
-                new ChatMessage("user", "This late pivot means we don't have time to boil the ocean for the client deliverable.")
+        List<Message<String>> messages = List.of(
+                Message.of(Message.Side.SYSTEM, "You are a helpful, pattern-following assistant that translates corporate jargon into plain English."),
+                Message.of(Message.Side.USER, "New synergies will help drive top-line growth."),
+                Message.of(Message.Side.ASSISTANT, "Things working well together will increase revenue."),
+                Message.of(Message.Side.USER, "Let's circle back when we have more bandwidth to touch base on opportunities for increased leverage."),
+                Message.of(Message.Side.ASSISTANT, "Let's talk later when we're less busy about how to do better."),
+                Message.of(Message.Side.USER, "This late pivot means we don't have time to boil the ocean for the client deliverable.")
         );
         assertEquals(expectedTokenCount, TokenCount.fromMessages(messages, tokenizer, ChatFormatDescriptor.forModel(modelName)));
     }
@@ -60,23 +60,15 @@ public class TokenCountTest {
 
         var functionArgs = "{\n  \"source_code\": \"import java.time.LocalDate;\\n\\npublic class Main {\\n  public static void main(String[] args) {\\n    LocalDate currentDate = LocalDate.now();\\n    System.out.println(currentDate);\\n  }\\n}\"\n}";
         var jsonNode = new ObjectMapper().readTree(functionArgs);
-        var messages = List.of(
-                new ChatMessage(ChatMessageRole.SYSTEM.value(), "You are a helpful assistant. Follow user instructions carefully."),
-                new ChatMessage(ChatMessageRole.USER.value(), "Please use Java to check current date."),
-                new ChatMessage(ChatMessageRole.ASSISTANT.value(), null, null, new ChatFunctionCall("java", jsonNode)),
-                new ChatMessage(ChatMessageRole.FUNCTION.value(), "TODAY", "java")
+        var messages = List.<Message<String>>of(
+                Message.of(Message.Side.SYSTEM, "You are a helpful assistant. Follow user instructions carefully."),
+                Message.of(Message.Side.USER, "Please use Java to check current date."),
+                Message.of(Message.Side.ASSISTANT, null, null, FunctionCall.of("java", jsonNode.toString())),
+                Message.of(Message.Side.FUNCTION, "TODAY", "java")
         );
         var functions = List.of(
-                new ChatFunction.Builder()
-                        .name("java")
-                        .description("Evaluate Java code.")
-                        .executor(JavaFunction.class, (__ -> null))
-                        .build(),
-                new ChatFunction.Builder()
-                        .name("sql")
-                        .description("Evaluate SQL code.")
-                        .executor(SqlFunction.class, (__ -> null))
-                        .build()
+                FunctionTool.of("java", "Evaluate Java code.", JavaFunction.class),
+                FunctionTool.of("sql", "Evaluate SQL code.", SqlFunction.class)
         );
         assertEquals(EXPECTED_TOKEN_COUNT, TokenCount.fromMessages(messages, functions, ModelType.GPT_3_5_TURBO_16K));
     }

@@ -1,4 +1,4 @@
-package com.didalgo.gpt3;
+package com.didalgo.llm.openai.tokenizer;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.converter.ConvertWith;
@@ -8,7 +8,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class GPT3TokenizerTest {
+class OpenAITokenizerTest {
 
     @ParameterizedTest
     @CsvSource({
@@ -122,7 +122,7 @@ class GPT3TokenizerTest {
     void can_encode_or_decode_test_vectors_correctly(String model,
                                                      String text,
                                                      @ConvertWith(ListConverter.class) List<Integer> tokens) {
-        var enc = new GPT3Tokenizer(Encoding.forModel(model));
+        var enc = new OpenAITokenizer(Encoding.forModel(model));
         assertEquals(tokens, enc.encode(text));
         assertEquals(text, enc.decode(tokens));
     }

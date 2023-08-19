@@ -2,7 +2,7 @@
  * Copyright (c) 2023 Mariusz Bernacki <consulting@didalgo.com>
  * SPDX-License-Identifier: MIT
  */
-package com.didalgo.gpt3;
+package com.didalgo.llm.openai.tokenizer;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;

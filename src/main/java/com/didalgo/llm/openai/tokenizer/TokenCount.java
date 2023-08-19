@@ -2,20 +2,20 @@
  * Copyright (c) 2023 Mariusz Bernacki <consulting@didalgo.com>
  * SPDX-License-Identifier: MIT
  */
-package com.didalgo.gpt3;
+package com.didalgo.llm.openai.tokenizer;
 
-import com.theokanning.openai.completion.chat.ChatFunction;
-import com.theokanning.openai.completion.chat.ChatMessage;
+import com.didalgo.llm.Tokenizer;
+import com.didalgo.llm.Tool;
+import com.didalgo.llm.chat.Message;
 
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.StreamSupport;
 
 /**
  * Utility class for calculating token count in text and chat messages.
  * <p>
  * This class provides methods for counting tokens in text strings and lists of
- * {@link ChatMessage} objects using a {@link GPT3Tokenizer}. It also supports pluggable
+ * {@link Message} objects using a {@link Tokenizer}. It also supports pluggable
  * {@link TokenCountSupport} implementations, allowing customization of token counting logic.</p>
  *
  * @author Mariusz Bernacki
@@ -31,7 +31,7 @@ public class TokenCount {
      * @param tokenizer  the magic thing that tokenizes text
      * @return the total token count, including newline tokens between lines
      */
-    public static int fromLinesJoined(Iterable<String> lines, GPT3Tokenizer tokenizer) {
+    public static int fromLinesJoined(Iterable<String> lines, Tokenizer tokenizer) {
         int tokenCount = StreamSupport.stream(lines.spliterator(), false)
                 .mapToInt(line -> fromString(line, tokenizer) + 1)
                 .sum();
@@ -45,7 +45,7 @@ public class TokenCount {
      * @param tokenizer  the tokenizer to use for token counting
      * @return the token count for the input text
      */
-    public static int fromString(String text, GPT3Tokenizer tokenizer) {
+    public static int fromString(String text, Tokenizer tokenizer) {
         return getSupport().countTokensFromString(text, tokenizer);
     }
 
@@ -57,7 +57,7 @@ public class TokenCount {
      * @param model        the model
      * @return the token count for the input chat messages
      */
-    public static int fromMessages(List<ChatMessage> messages, ModelType model) {
+    public static int fromMessages(List<? extends Message<? extends CharSequence>> messages, ModelType model) {
         return fromMessages(messages, List.of(), model);
     }
 
@@ -66,18 +66,18 @@ public class TokenCount {
      * and chat format descriptor.
      *
      * @param messages     a list of chat messages
-     * @param functions    a list of chat functions
+     * @param tools        a list of chat tools
      * @param model        the model
      * @return the token count for the input chat messages
      */
-    public static int fromMessages(List<ChatMessage> messages, List<ChatFunction> functions, ModelType model) {
-        return fromMessages(messages, functions, model.getTokenizer(), model.getChatFormatDescriptor());
+    public static int fromMessages(List<? extends Message<? extends CharSequence>> messages, List<? extends Tool> tools, ModelType model) {
+        return fromMessages(messages, tools, model.getTokenizer(), model.getChatFormatDescriptor());
     }
 
     /**
      * Counts number of prompt tokens in messages.
      */
-    public static int fromMessages(List<ChatMessage> messages, GPT3Tokenizer tokenizer, ChatFormatDescriptor chatFormat) {
+    public static int fromMessages(List<? extends Message<? extends CharSequence>> messages, Tokenizer tokenizer, ChatFormatDescriptor chatFormat) {
         return fromMessages(messages, List.of(), tokenizer, chatFormat);
     }
 
@@ -86,49 +86,18 @@ public class TokenCount {
      * and chat format descriptor.
      *
      * @param messages     a list of chat messages
-     * @param functions    a list of chat functions
-     * @param tokenizer    the tokenizer to use for token counting
+     * @param tools        a list of chat tools
      * @param chatFormat   the descriptor defining the chat format
+     * @param tokenizer    the tokenizer to use for token counting
      * @return the token count for the input chat messages
      */
-    public static int fromMessages(List<ChatMessage> messages, List<ChatFunction> functions, GPT3Tokenizer tokenizer, ChatFormatDescriptor chatFormat) {
-        return fromMessages(messages, TokenizableMessage.from(
-                ChatMessage::getRole,
-                ChatMessage::getContent,
-                ChatMessage::getName,
-                chatMessage -> (chatMessage.getFunctionCall() == null)? TokenizableFunctionCall.NONE
-                        : TokenizableFunctionCall.of(chatMessage.getFunctionCall().getName(), chatMessage.getFunctionCall().getArguments().toString())
-        ), functions, TokenizableFunction.from(
-                ChatFunction::getName,
-                ChatFunction::getDescription,
-                chatFunction -> getSupport().generateJsonSchema(chatFunction.getParametersClass())
-        ), chatFormat, tokenizer);
-    }
-
-    /**
-     * Counts number of prompt tokens in messages.
-     */
     public static int fromMessages(
-            List<? extends TokenizableMessage> messages,
-            List<? extends TokenizableTool> tools,
-            ChatFormatDescriptor chatFormat,
-            GPT3Tokenizer tokenizer) {
+            List<? extends Message<? extends CharSequence>> messages,
+            List<? extends Tool> tools,
+            Tokenizer tokenizer,
+            ChatFormatDescriptor chatFormat) {
 
-        return fromMessages(messages, Function.identity(), tools, Function.identity(), chatFormat, tokenizer);
-    }
-
-    /**
-     * Counts number of prompt tokens in messages.
-     */
-    public static <T_MSG, T_TOOL> int fromMessages(
-            List<T_MSG> messages,
-            Function<T_MSG, ? extends TokenizableMessage> messageCoercer,
-            List<T_TOOL> tools,
-            Function<T_TOOL, ? extends TokenizableTool> toolCoercer,
-            ChatFormatDescriptor chatFormat,
-            GPT3Tokenizer tokenizer) {
-
-        return getSupport().countTokensFromMessages(messages, messageCoercer, tools, toolCoercer, tokenizer, chatFormat);
+        return getSupport().countTokensFromMessages(messages, tools, tokenizer, chatFormat);
     }
 
     /**

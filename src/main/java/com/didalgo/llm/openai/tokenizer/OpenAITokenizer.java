@@ -4,7 +4,9 @@
  * SPDX-License-Identifier: MIT
  * SPDX-FileComment: This file is a transpiled version of the code from https://github.com/openai/tiktoken
  */
-package com.didalgo.gpt3;
+package com.didalgo.llm.openai.tokenizer;
+
+import com.didalgo.llm.Tokenizer;
 
 import java.io.ByteArrayOutputStream;
 import java.util.*;
@@ -26,7 +28,7 @@ import static java.util.stream.Collectors.toMap;
  *     <li>[MB] 2023-04-02: Major refactoring for cleaner code and improved performance.</li>
  * </ul>
  */
-public class GPT3Tokenizer {
+public class OpenAITokenizer implements Tokenizer {
     private final Map<ByteSequence, Integer> encoder;
     private final Map<Integer, ByteSequence> decoder;
     private final Map<String, Integer> specialTokensEncoder;
@@ -34,7 +36,7 @@ public class GPT3Tokenizer {
     private final Pattern pattern;
     private final Pattern specialPattern;
 
-    public GPT3Tokenizer(Encoding encoding) {
+    public OpenAITokenizer(Encoding encoding) {
         this.encoder = encoding.mergeableRanks();
         this.decoder = encoder.entrySet().stream()
                 .collect(toMap(Entry::getValue, Entry::getKey));
@@ -52,6 +54,7 @@ public class GPT3Tokenizer {
         return Pattern.compile(joinedPattern);
     }
 
+    @Override
     public String decode(List<Integer> tokens) {
         return decodeImpl(tokens);
     }
@@ -87,6 +90,7 @@ public class GPT3Tokenizer {
         return pattern;
     }
 
+    @Override
     public List<Integer> encode(CharSequence text) {
         return encode(text, false);
     }

@@ -1,4 +1,4 @@
-package com.didalgo.gpt3;
+package com.didalgo.llm.openai.tokenizer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

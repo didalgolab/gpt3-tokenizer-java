@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  * SPDX-FileComment: This file is a transpiled version of the code from https://github.com/openai/tiktoken
  */
-package com.didalgo.gpt3;
+package com.didalgo.llm.openai.tokenizer;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;

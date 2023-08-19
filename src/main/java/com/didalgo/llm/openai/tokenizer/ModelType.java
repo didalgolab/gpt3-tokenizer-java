@@ -2,7 +2,9 @@
  * Copyright (c) 2023 Mariusz Bernacki <consulting@didalgo.com>
  * SPDX-License-Identifier: MIT
  */
-package com.didalgo.gpt3;
+package com.didalgo.llm.openai.tokenizer;
+
+import com.didalgo.llm.CompletionType;
 
 import java.lang.ref.SoftReference;
 import java.util.Collections;
@@ -98,14 +100,14 @@ public enum ModelType {
 
 	private static final class Cache {
 
-		private static final Map<ModelType, SoftReference<GPT3Tokenizer>> gptTokenizersCache = Collections.synchronizedMap(new EnumMap<>(ModelType.class));
+		private static final Map<ModelType, SoftReference<OpenAITokenizer>> gptTokenizersCache = Collections.synchronizedMap(new EnumMap<>(ModelType.class));
 
-		private static GPT3Tokenizer getTokenizer(ModelType model) {
-			GPT3Tokenizer tokenizer;
-			SoftReference<GPT3Tokenizer> ref = Cache.gptTokenizersCache.get(model);
+		private static OpenAITokenizer getTokenizer(ModelType model) {
+			OpenAITokenizer tokenizer;
+			SoftReference<OpenAITokenizer> ref = Cache.gptTokenizersCache.get(model);
 			if (ref == null || (tokenizer = ref.get()) == null) {
 				synchronized (gptTokenizersCache) {
-					Cache.gptTokenizersCache.put(model, new SoftReference<>(tokenizer = new GPT3Tokenizer(model.getEncoding())));
+					Cache.gptTokenizersCache.put(model, new SoftReference<>(tokenizer = new OpenAITokenizer(model.getEncoding())));
 				}
 			}
 
@@ -117,7 +119,7 @@ public enum ModelType {
 		return Encoding.forName(encodingType().encodingName());
 	}
 
-	public GPT3Tokenizer getTokenizer() {
+	public OpenAITokenizer getTokenizer() {
 		return Cache.getTokenizer(this);
 	}
 

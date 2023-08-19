@@ -2,24 +2,19 @@
  * Copyright (c) 2023 Mariusz Bernacki <consulting@didalgo.com>
  * SPDX-License-Identifier: MIT
  */
-package com.didalgo.gpt3;
+package com.didalgo.llm.openai.tokenizer;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.victools.jsonschema.generator.*;
-import com.github.victools.jsonschema.module.jackson.JacksonModule;
-import com.github.victools.jsonschema.module.jackson.JacksonOption;
+import com.didalgo.llm.FunctionTool;
+import com.didalgo.llm.Tokenizer;
+import com.didalgo.llm.Tool;
+import com.didalgo.llm.chat.Message;
 
-import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonString;
 import javax.json.JsonValue;
-import java.io.StringReader;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.function.Function;
 
 import static java.util.stream.Collectors.groupingBy;
 import static javax.json.JsonValue.EMPTY_JSON_ARRAY;
@@ -33,44 +28,39 @@ public class TokenCountSupport {
 
     private static final FunctionDocumenter standardDocumenter = new StandardFunctionDocumenter();
 
-    public int countTokensFromString(String text, GPT3Tokenizer tokenizer) {
+    public int countTokensFromString(String text, Tokenizer tokenizer) {
         return tokenizer.encode(text).size();
     }
 
-    public <T_MSG, T_TOOL> int countTokensFromMessages(
-            List<T_MSG> messages,
-            Function<T_MSG, ? extends TokenizableMessage> messageCoercer,
-            List<T_TOOL> tools,
-            Function<T_TOOL, ? extends TokenizableTool> toolCoercer,
-            GPT3Tokenizer tokenizer,
+    public int countTokensFromMessages(
+            List<? extends Message<? extends CharSequence>> messages,
+            List<? extends Tool> tools,
+            Tokenizer tokenizer,
             ChatFormatDescriptor chatFormat)
     {
         var toolsPrompt = "";
         if (!tools.isEmpty()) {
-            var tokenizable = tools.stream()
-                    .map(toolCoercer)
-                    .toList();
-            toolsPrompt = generateDocumentation(tokenizable);
+            toolsPrompt = generateDocumentation(tools);
         }
 
         int tokenCount = 0;
         for (int index = 0; index < messages.size(); index++) {
-            var tokenizable = messageCoercer.apply(messages.get(index));
+            var message = messages.get(index);
             tokenCount += chatFormat.extraTokenCountPerMessage();
 
-            var role = tokenizable.role();
+            var role = message.role().toString();
             if (role != null && !role.isEmpty())
                 tokenCount += tokenizer.encode(role).size();
 
-            var content = tokenizable.content();
-            if (content != null && role != null && index == 0 && "system".equals(role.toString())) {
+            var content = message.isFunctionCall()? null : message.content();
+            if (content != null && index == 0 && "system".equals(role)) {
                 content += "\n\n" + toolsPrompt;
                 toolsPrompt = "";
             }
             if (content != null)
                 tokenCount += tokenizer.encode(content).size();
 
-            var functionCall = tokenizable.functionCall();
+            var functionCall = message.functionCall();
             if (functionCall.isPresent()) {
                 tokenCount += tokenizer.encode(functionCall.name()).size();
                 tokenCount += tokenizer.encode(functionCall.arguments()).size();
@@ -91,11 +81,6 @@ public class TokenCountSupport {
         return tokenCount;
     }
 
-    public JsonObject generateJsonSchema(Class<?> valueType) {
-        JsonNode schemaNode = JsonSchemaUtils.generateSchema(valueType);
-        return Json.createReader(new StringReader(schemaNode.toString())).readObject();
-    }
-
     public static TokenCountSupport getSupport() {
         return LazyHolder.INSTANCE;
     }
@@ -105,40 +90,26 @@ public class TokenCountSupport {
                 .findFirst().orElseGet(TokenCountSupport::new);
     }
 
-    private static final class JsonSchemaUtils {
-        private static final Comparator<MemberScope<?,?>> DECLARATION_ORDER = (__, ___) -> 0;
-        private static final ObjectMapper mapper = new ObjectMapper();
-        private static final SchemaGenerator generator;
-        static {
-            SchemaGeneratorConfigBuilder configBuilder = new SchemaGeneratorConfigBuilder(mapper, SchemaVersion.DRAFT_2019_09, OptionPreset.PLAIN_JSON)
-                    .with(new JacksonModule(JacksonOption.RESPECT_JSONPROPERTY_REQUIRED));
-            configBuilder.forTypesInGeneral().withPropertySorter(DECLARATION_ORDER);
-            generator = new SchemaGenerator(configBuilder.build());
-        }
-
-        public static JsonNode generateSchema(Class<?> valueType) {
-            return generator.generateSchema(valueType);
-        }
-    }
-
-    public String generateDocumentation(List<? extends TokenizableTool> tools) {
+    public String generateDocumentation(List<? extends Tool> tools) {
         StringBuilder sb = new StringBuilder();
 
         sb.append("# Tools\n\n");
 
-        Map<String, List<TokenizableTool>> toolsByCategory = tools.stream()
-                .collect(groupingBy(TokenizableTool::toolCategory));
+        Map<String, List<Tool>> toolsByCategory = tools.stream()
+                .collect(groupingBy(Tool::toolCategory));
 
-        for (Map.Entry<String, List<TokenizableTool>> categoryEntry : toolsByCategory.entrySet()) {
+        for (Map.Entry<String, List<Tool>> categoryEntry : toolsByCategory.entrySet()) {
             sb.append("## ").append(categoryEntry.getKey()).append("\n\n");
 
-            Map<String, List<TokenizableTool>> toolsByNamespace = categoryEntry.getValue().stream()
-                    .collect(groupingBy(TokenizableTool::toolNamespace));
+            Map<String, List<Tool>> toolsByNamespace = categoryEntry.getValue().stream()
+                    .collect(groupingBy(Tool::toolNamespace));
 
-            for (Map.Entry<String, List<TokenizableTool>> namespaceEntry : toolsByNamespace.entrySet()) {
+            for (Map.Entry<String, List<Tool>> namespaceEntry : toolsByNamespace.entrySet()) {
                 sb.append("namespace ").append(namespaceEntry.getKey()).append(" {\n\n");
-                for (TokenizableTool tool : namespaceEntry.getValue()) {
-                    sb.append(tool.generateDocumentation()).append("\n\n");
+                for (Tool tool : namespaceEntry.getValue()) {
+                    if (tool instanceof FunctionTool functionTool) {
+                        sb.append(getFunctionDocumenter(functionTool).generateDocumentation(functionTool)).append("\n\n");
+                    }
                 }
                 sb.append("} // namespace ").append(namespaceEntry.getKey()).append("\n\n");
             }
@@ -149,17 +120,17 @@ public class TokenCountSupport {
 
 
     public interface FunctionDocumenter {
-        CharSequence generateDocumentation(TokenizableFunction function);
+        CharSequence generateDocumentation(FunctionTool function);
     }
 
-    public FunctionDocumenter getFunctionDocumenter(TokenizableFunction function) {
+    public FunctionDocumenter getFunctionDocumenter(Tool function) {
         return standardDocumenter;
     }
 
     private static class StandardFunctionDocumenter implements FunctionDocumenter {
 
         @Override
-        public String generateDocumentation(TokenizableFunction function) {
+        public String generateDocumentation(FunctionTool function) {
             JsonObject params = function.parameters();
             StringBuilder buf = new StringBuilder();
             if (!function.description().isEmpty())
