@@ -20,10 +20,13 @@ public enum ModelType {
 	// chat
 	GPT_4("gpt-4", EncodingType.CL100K_BASE, 8192, CompletionType.CHAT),
 	GPT_4_32K("gpt-4-32k", EncodingType.CL100K_BASE, 32768, CompletionType.CHAT),
+	GPT_4_128K("gpt-4-1106-preview", EncodingType.CL100K_BASE, 128000, CompletionType.CHAT),
 	GPT_3_5_TURBO("gpt-3.5-turbo", EncodingType.CL100K_BASE, 4096, CompletionType.CHAT),
 	GPT_3_5_TURBO_16K("gpt-3.5-turbo-16k", EncodingType.CL100K_BASE, 16384, CompletionType.CHAT),
+	GPT_3_5_TURBO_1106("gpt-3.5-turbo-1106", EncodingType.CL100K_BASE, 16384, CompletionType.CHAT),
 
 	// text
+	GPT_3_5_TURBO_INSTRUCT("gpt-3.5-turbo-instruct", EncodingType.CL100K_BASE, 4097, CompletionType.TEXT),
 	TEXT_DAVINCI_003("text-davinci-003", EncodingType.P50K_BASE, 4097, CompletionType.TEXT),
 	TEXT_DAVINCI_002("text-davinci-002", EncodingType.P50K_BASE, 4097, CompletionType.TEXT),
 	TEXT_DAVINCI_001("text-davinci-001", EncodingType.R50K_BASE, 2049, CompletionType.TEXT),
@@ -83,17 +86,30 @@ public enum ModelType {
 	 * @throws IllegalArgumentException if the model with the given name doesn't exist
 	 */
 	public static Optional<ModelType> forModel(String modelName) throws IllegalArgumentException {
-		// Truncate model version information first
-		if (modelName.matches(".*-\\d{4}$")) {
-			modelName = modelName.substring(0, modelName.length() - 5);
+		Optional<ModelType> modelType = forModelExact(modelName);
+		if (modelType.isPresent()) {
+			return modelType;
 		}
 
+		// Truncate model version information
+		if (modelName.matches(".*-\\d{4}$")) {
+			modelName = modelName.substring(0, modelName.length() - 5);
+
+			modelType = forModelExact(modelName);
+			if (modelType.isPresent()) {
+				return modelType;
+			}
+		}
+		throw new IllegalArgumentException("Model `" + modelName + "` not found");
+	}
+
+	private static Optional<ModelType> forModelExact(String modelName) {
 		for (final ModelType modelType : values()) {
 			if (modelType.modelName().equals(modelName)) {
 				return Optional.of(modelType);
 			}
 		}
-		throw new IllegalArgumentException("Model `" + modelName + "` not found");
+		return Optional.empty();
 	}
 
 	private static final class Cache {
