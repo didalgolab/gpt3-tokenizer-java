@@ -113,7 +113,7 @@ public class GPT3Tokenizer {
                 // Find the next allowed special token, if any
                 nextSpecial = specialRegex.matcher(text.subSequence(startFind, text.length()));
                 if (nextSpecial.find()) {
-                    int startMatch = start + nextSpecial.start();
+                    int startMatch = startFind + nextSpecial.start();
                     if (allowedSpecial.contains(text.subSequence(startMatch, startMatch + nextSpecial.group().length()).toString())) {
                         break;
                     }
