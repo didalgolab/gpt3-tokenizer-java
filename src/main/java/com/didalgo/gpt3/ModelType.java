@@ -7,6 +7,7 @@ package com.didalgo.gpt3;
 import java.lang.ref.SoftReference;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -18,12 +19,12 @@ import java.util.Optional;
  */
 public enum ModelType {
 	// chat
+	GPT_4_TURBO("gpt-4-turbo-preview", EncodingType.CL100K_BASE, 128000, CompletionType.CHAT),
 	GPT_4("gpt-4", EncodingType.CL100K_BASE, 8192, CompletionType.CHAT),
 	GPT_4_32K("gpt-4-32k", EncodingType.CL100K_BASE, 32768, CompletionType.CHAT),
-	GPT_4_128K("gpt-4-1106-preview", EncodingType.CL100K_BASE, 128000, CompletionType.CHAT),
-	GPT_3_5_TURBO("gpt-3.5-turbo", EncodingType.CL100K_BASE, 4096, CompletionType.CHAT),
+	GPT_3_5_TURBO("gpt-3.5-turbo", EncodingType.CL100K_BASE, 16384, CompletionType.CHAT),
+	GPT_3_5_TURBO_LEGACY("gpt-3.5-turbo", EncodingType.CL100K_BASE, 4096, CompletionType.CHAT),
 	GPT_3_5_TURBO_16K("gpt-3.5-turbo-16k", EncodingType.CL100K_BASE, 16384, CompletionType.CHAT),
-	GPT_3_5_TURBO_1106("gpt-3.5-turbo-1106", EncodingType.CL100K_BASE, 16384, CompletionType.CHAT),
 
 	// text
 	GPT_3_5_TURBO_INSTRUCT("gpt-3.5-turbo-instruct", EncodingType.CL100K_BASE, 4097, CompletionType.TEXT),
@@ -104,6 +105,10 @@ public enum ModelType {
 	}
 
 	private static Optional<ModelType> forModelExact(String modelName) {
+		if (specialVariants.containsKey(modelName)) {
+			return Optional.of(specialVariants.get(modelName));
+		}
+
 		for (final ModelType modelType : values()) {
 			if (modelType.modelName().equals(modelName)) {
 				return Optional.of(modelType);
@@ -150,5 +155,15 @@ public enum ModelType {
 	 */
 	public ChatFormatDescriptor getChatFormatDescriptor() {
 		return ChatFormatDescriptor.forModel(modelName());
+	}
+
+	private static Map<String, ModelType> specialVariants = new HashMap<>();
+	static {
+		specialVariants.put("gpt-3.5-turbo-0301", GPT_3_5_TURBO_LEGACY);
+		specialVariants.put("gpt-3.5-turbo-0613", GPT_3_5_TURBO_LEGACY);
+
+		specialVariants.put("gpt-4-turbo-preview", GPT_4_TURBO);
+		specialVariants.put("gpt-4-1106-preview", GPT_4_TURBO);
+		specialVariants.put("gpt-4-0125-preview", GPT_4_TURBO);
 	}
 }
