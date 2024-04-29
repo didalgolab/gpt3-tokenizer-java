@@ -59,6 +59,51 @@ for (var sb = new StringBuilder(" "); (tokens = tokenizer.encode(sb)).size() == 
 `                                                                                 `'s token is [96529], and that's 81 spaces!
 ```
 
+## Maven/Gradle Usage
+
+This project is hosted on JitPack, which means you can add it as a dependency in your Maven or Gradle project directly.
+
+### Maven
+
+Add the JitPack repository to your `pom.xml`:
+
+```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+```
+
+Then add the dependency:
+
+```xml
+<dependency>
+    <groupId>com.github.didalgolab</groupId>
+    <artifactId>gpt3-tokenizer-java</artifactId>
+    <version>main-SNAPSHOT</version>
+</dependency>
+```
+
+### Gradle
+
+Add the JitPack repository to your `build.gradle`:
+
+```gradle
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+```
+
+Then add the dependency:
+
+```gradle
+dependencies {
+    implementation 'com.github.didalgolab:gpt3-tokenizer-java:main-SNAPSHOT'
+}
+```
+
 ## License
 
 This project is licensed under the MIT License.
