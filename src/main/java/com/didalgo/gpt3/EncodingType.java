@@ -11,6 +11,7 @@ package com.didalgo.gpt3;
  *
  */
 public enum EncodingType {
+	O200K_BASE("o200k_base"),
 	CL100K_BASE("cl100k_base"),
 	R50K_BASE("r50k_base"),
 	P50K_BASE("p50k_base"),

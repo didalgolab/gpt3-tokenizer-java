@@ -19,6 +19,7 @@ import java.util.Optional;
  */
 public enum ModelType {
 	// chat
+	GPT_4_O("gpt-4o", EncodingType.O200K_BASE, 128000, CompletionType.CHAT),
 	GPT_4_TURBO("gpt-4-turbo-preview", EncodingType.CL100K_BASE, 128000, CompletionType.CHAT),
 	GPT_4("gpt-4", EncodingType.CL100K_BASE, 8192, CompletionType.CHAT),
 	GPT_4_32K("gpt-4-32k", EncodingType.CL100K_BASE, 32768, CompletionType.CHAT),
@@ -93,8 +94,10 @@ public enum ModelType {
 		}
 
 		// Truncate model version information
-		if (modelName.matches(".*-\\d{4}$")) {
-			modelName = modelName.substring(0, modelName.length() - 5);
+		boolean shortMatch;
+		if ((shortMatch = modelName.matches(".*-\\d{4}$")) || modelName.matches(".*-\\d{4}-\\d{2}-\\d{2}$")) {
+			modelName = shortMatch ? modelName.substring(0, modelName.length() - 5)
+					: modelName.substring(0, modelName.length() - 11);
 
 			modelType = forModelExact(modelName);
 			if (modelType.isPresent()) {

@@ -29,6 +29,20 @@ public interface Encoding {
     String FIM_SUFFIX = "<|fim_suffix|>";
     String ENDOFPROMPT = "<|endofprompt|>";
 
+    Encoding O200K_BASE = new Of(
+            "o200k_base.tiktoken", new HashMap<>(),
+            Map.of(ENDOFTEXT, 199999, ENDOFPROMPT, 200018),
+            Pattern.compile(
+                    "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?" +
+                    "|[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?" +
+                    "|\\p{N}{1,3}" +
+                    "| ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*" +
+                    "|\\s*[\\r\\n]+" +
+                    "|\\s+(?!\\S)" +
+                    "|\\s+"
+                    , Pattern.UNICODE_CHARACTER_CLASS)
+            );
+
     Encoding CL100K_BASE = new Of(
             "cl100k_base.tiktoken", new HashMap<>(),
             Map.of(ENDOFTEXT, 100257, FIM_PREFIX, 100258, FIM_MIDDLE, 100259, FIM_SUFFIX, 100260, ENDOFPROMPT, 100276),
@@ -83,6 +97,7 @@ public interface Encoding {
 
     static Encoding forName(String encodingName) {
         return switch (encodingName.toLowerCase()) {
+            case "o200k_base" -> O200K_BASE;
             case "cl100k_base" -> CL100K_BASE;
             case "p50k_base" -> P50K_BASE;
             case "p50k_edit" -> P50K_EDIT;
@@ -108,11 +123,13 @@ public interface Encoding {
         private static final Map<String, String> modelToEncoding;
         static {
             var mp2e = new HashMap<String, String>();
+            mp2e.put("gpt-4o-", "o200k_base");
             mp2e.put("gpt-4-", "cl100k_base");
             mp2e.put("gpt-3.5-turbo-", "cl100k_base");
             modelPrefixToEncoding = mp2e;
 
             var m2e = new HashMap<String, String>();
+            m2e.put("gpt-4o", "o200k_base");
             m2e.put("gpt-4", "cl100k_base");
             m2e.put("gpt-3.5-turbo", "cl100k_base");
             m2e.put("text-davinci-003", "p50k_base");
