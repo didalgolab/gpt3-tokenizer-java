@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/github/license/didalgo2/gpt3-tokenizer-java?style=flat-square)](https://opensource.org/license/mit/)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/didalgo2/gpt3-tokenizer-java/gradle.yml?style=flat-square)
-[![Maven Central](https://img.shields.io/maven-central/v/com.didalgo/gpt3-tokenizer?style=flat-square)](https://central.sonatype.com/artifact/com.didalgo/gpt3-tokenizer/0.1.5)
+[![Maven Central](https://img.shields.io/maven-central/v/com.didalgo/gpt3-tokenizer?style=flat-square)](https://central.sonatype.com/artifact/com.didalgo/gpt3-tokenizer/0.1.8)
 
 This is a Java implementation of a GPT3/4 tokenizer, loosely ported from [Tiktoken](https://github.com/openai/tiktoken) with the help of [ChatGPT](https://openai.com/blog/chatgpt).
 
